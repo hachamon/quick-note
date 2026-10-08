@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Quick Note</title>
+<meta name="theme-color" content="#1f6f54">
+<meta name="description" content="Notez vos idées et tâches à la voix, synchronisées entre téléphone et Mac.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>Quick Note</h1>
+    <span id="status"></span>
+  </header>
+
+  <!-- Écran de connexion -->
+  <section id="login" class="card" hidden>
+    <h2>Connexion</h2>
+    <form id="email-form">
+      <label for="email">Votre adresse e-mail</label>
+      <input id="email" type="email" autocomplete="email" inputmode="email" required placeholder="vous@exemple.com">
+      <button class="primary" type="submit">Recevoir le lien de connexion</button>
+    </form>
+    <div id="sent" hidden>
+      <p class="msg">Ouvrez l'e-mail « Your sign-in link » sur cet appareil et touchez <strong>Sign in</strong>. Vous serez connecté ici automatiquement.</p>
+      <button class="link" type="button" id="back">Changer d'adresse ou renvoyer</button>
+    </div>
+    <p id="login-msg" class="msg"></p>
+  </section>
+
+  <!-- App -->
+  <div id="app" hidden>
+    <section class="card capture" aria-label="Nouvelle note">
+      <textarea id="text" placeholder="Touchez le micro et parlez…"></textarea>
+      <div class="row">
+        <button id="mic" type="button" aria-label="Dicter">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg>
+        </button>
+        <div class="seg" role="group" aria-label="Type de note">
+          <button type="button" data-kind="idea" aria-pressed="true">Idée</button>
+          <button type="button" data-kind="task" aria-pressed="false">Tâche</button>
+        </div>
+        <button id="save" class="primary" type="button" disabled>Enregistrer</button>
+      </div>
+      <p id="mic-hint" class="hint" hidden>Dictée indisponible dans ce navigateur : utilisez le micro du clavier.</p>
+    </section>
+
+    <nav class="filters" aria-label="Filtrer">
+      <button type="button" data-f="all" aria-pressed="true">Tout<span class="n" id="n-all">0</span></button>
+      <button type="button" data-f="idea" aria-pressed="false">Idées<span class="n" id="n-idea">0</span></button>
+      <button type="button" data-f="task" aria-pressed="false">À faire<span class="n" id="n-task">0</span></button>
+    </nav>
+
+    <ul id="list"></ul>
+    <div id="empty" class="empty">Vos notes apparaîtront ici.</div>
+
+    <footer><span id="who"></span> · <button class="link" type="button" id="logout">Se déconnecter</button></footer>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
