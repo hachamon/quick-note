@@ -192,15 +192,20 @@
     rec = new SR();
     rec.lang = "fr-FR";
     rec.interimResults = true;
-    rec.continuous = true;
+    // Chrome Android renvoie en mode continu des résultats cumulatifs
+    // ("application", "application de", …) : on dicte une phrase à la fois.
+    rec.continuous = !/Android/i.test(navigator.userAgent);
     base = text.value.trim() ? text.value.trim() + " " : "";
     rec.onresult = (e) => {
-      let finalT = "", interim = "";
+      let said = "";
       for (let i = 0; i < e.results.length; i++) {
-        const r = e.results[i];
-        if (r.isFinal) finalT += r[0].transcript; else interim += r[0].transcript;
+        const t = e.results[i][0].transcript.trim();
+        if (!t) continue;
+        // Si ce résultat reprend le précédent en l'allongeant, il le remplace.
+        if (t.toLowerCase().startsWith(said.toLowerCase())) said = t;
+        else if (!said.toLowerCase().endsWith(t.toLowerCase())) said += " " + t;
       }
-      text.value = base + capitalize((finalT + interim).trim());
+      text.value = base + capitalize(said.trim());
       ls.set("qn-draft", text.value); updateSave();
     };
     rec.onerror = (e) => {
