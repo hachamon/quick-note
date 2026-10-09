@@ -65,3 +65,4 @@ li input[type=checkbox]{width:22px;height:22px;margin:2px 0 0;accent-color:var(-
 .del.confirm{color:var(--danger);font-weight:600}
 .empty{text-align:center;color:var(--muted);padding:28px 12px;border:1px dashed var(--line);border-radius:14px}
 footer{text-align:center;font-size:.8rem;color:var(--muted)}
+a.primary{display:block;text-align:center;text-decoration:none}

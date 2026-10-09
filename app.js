@@ -182,20 +182,52 @@
   }
 
   // ================= Dictée vocale =================
+  // Dans l'APK Android : reconnaissance vocale native (plugin Capacitor).
+  // Dans un navigateur : Web Speech API.
+  const native = window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins : null;
+  const NativeSR = native?.SpeechRecognition;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const mic = $("#mic");
-  let rec = null, base = "";
-  if (!SR) { mic.hidden = true; $("#mic-hint").hidden = false; }
-  mic.addEventListener("click", () => (rec ? stopMic() : startMic()));
+  let rec = null, listening = false, base = "";
+  if (!NativeSR && !SR) { mic.hidden = true; $("#mic-hint").hidden = false; }
+  mic.addEventListener("click", () => (listening ? stopMic() : startMic()));
 
-  function startMic() {
+  function showDictation(said) {
+    text.value = base + capitalize(said.trim());
+    ls.set("qn-draft", text.value); updateSave();
+  }
+  function setListening(on) {
+    listening = on;
+    mic.classList.toggle("rec", on);
+    mic.setAttribute("aria-label", on ? "Arrêter la dictée" : "Dicter");
+  }
+  function micDenied() {
+    $("#mic-hint").textContent = "Autorisez le micro pour Quick Note dans les réglages du téléphone.";
+    $("#mic-hint").hidden = false;
+  }
+
+  if (NativeSR) {
+    NativeSR.addListener("partialResults", (d) => { if (listening && d.matches?.[0]) showDictation(d.matches[0]); });
+    NativeSR.addListener("listeningState", (d) => { if (d.status === "stopped") setListening(false); });
+  }
+
+  async function startMic() {
+    base = text.value.trim() ? text.value.trim() + " " : "";
+    if (NativeSR) {
+      try {
+        const perm = await NativeSR.requestPermissions();
+        if (perm.speechRecognition !== "granted") return micDenied();
+        setListening(true);
+        await NativeSR.start({ language: "fr-FR", partialResults: true, popup: false, maxResults: 1 });
+      } catch { setListening(false); }
+      return;
+    }
     rec = new SR();
     rec.lang = "fr-FR";
     rec.interimResults = true;
     // Chrome Android renvoie en mode continu des résultats cumulatifs
     // ("application", "application de", …) : on dicte une phrase à la fois.
     rec.continuous = !/Android/i.test(navigator.userAgent);
-    base = text.value.trim() ? text.value.trim() + " " : "";
     rec.onresult = (e) => {
       let said = "";
       for (let i = 0; i < e.results.length; i++) {
@@ -205,20 +237,17 @@
         if (t.toLowerCase().startsWith(said.toLowerCase())) said = t;
         else if (!said.toLowerCase().endsWith(t.toLowerCase())) said += " " + t;
       }
-      text.value = base + capitalize(said.trim());
-      ls.set("qn-draft", text.value); updateSave();
+      showDictation(said);
     };
-    rec.onerror = (e) => {
-      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-        $("#mic-hint").textContent = "Autorisez le micro pour Quick Note dans les réglages du navigateur.";
-        $("#mic-hint").hidden = false;
-      }
-    };
-    rec.onend = () => { rec = null; mic.classList.remove("rec"); mic.setAttribute("aria-label", "Dicter"); };
+    rec.onerror = (e) => { if (e.error === "not-allowed" || e.error === "service-not-allowed") micDenied(); };
+    rec.onend = () => { rec = null; setListening(false); };
     rec.start();
-    mic.classList.add("rec"); mic.setAttribute("aria-label", "Arrêter la dictée");
+    setListening(true);
   }
-  function stopMic() { if (rec) rec.stop(); }
+  function stopMic() {
+    if (NativeSR) { if (listening) NativeSR.stop().catch(() => {}); setListening(false); }
+    else if (rec) rec.stop();
+  }
   function capitalize(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
 
   // ================= Démarrage =================
@@ -237,7 +266,29 @@
     }
   }
 
-  sb.auth.onAuthStateChange((_evt, session) => showApp(session));
+  // Retour de connexion vers l'APK : le lien de l'e-mail s'ouvre dans Chrome, qui se connecte,
+  // puis propose de transmettre la session à l'app via quicknote://login.
+  const cameFromEmail = /access_token=/.test(location.hash);
+  const isAndroidBrowser = /Android/i.test(navigator.userAgent) && !native;
+  if (native?.App) {
+    native.App.addListener("appUrlOpen", async ({ url }) => {
+      const h = new URLSearchParams(url.split("#")[1] || "");
+      if (h.get("access_token")) await sb.auth.setSession({ access_token: h.get("access_token"), refresh_token: h.get("refresh_token") });
+    });
+  }
+  let offered = false;
+  function offerOpenInApp(session) {
+    const link = "quicknote://login#access_token=" + encodeURIComponent(session.access_token) + "&refresh_token=" + encodeURIComponent(session.refresh_token);
+    const box = $("#to-app");
+    box.querySelector("a").href = link;
+    box.hidden = false;
+    location.href = link; // ouvre l'APK directement si elle est installée
+  }
+
+  sb.auth.onAuthStateChange((evt, session) => {
+    showApp(session);
+    if (cameFromEmail && isAndroidBrowser && session && !offered && (evt === "SIGNED_IN" || evt === "INITIAL_SESSION")) { offered = true; offerOpenInApp(session); }
+  });
   sb.auth.getSession().then(({ data }) => showApp(data.session));
   window.addEventListener("online", flush);
   window.addEventListener("offline", () => setStatus());
