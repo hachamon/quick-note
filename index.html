@@ -20,24 +20,17 @@
     <span id="status"></span>
   </header>
 
-  <!-- Après un lien de connexion ouvert dans Chrome : renvoi vers l'APK -->
-  <section id="to-app" class="card" hidden>
-    <p class="msg">Vous êtes connecté. Si vous utilisez l'application Quick Note installée :</p>
-    <a class="primary" href="#">Ouvrir l'application</a>
-  </section>
-
   <!-- Écran de connexion -->
   <section id="login" class="card" hidden>
-    <h2>Connexion</h2>
-    <form id="email-form">
-      <label for="email">Votre adresse e-mail</label>
+    <h2 id="login-title">Connexion</h2>
+    <form id="login-form">
+      <label for="email">Adresse e-mail</label>
       <input id="email" type="email" autocomplete="email" inputmode="email" required placeholder="vous@exemple.com">
-      <button class="primary" type="submit">Recevoir le lien de connexion</button>
+      <label for="password">Mot de passe</label>
+      <input id="password" type="password" autocomplete="current-password" required minlength="6" placeholder="6 caractères minimum">
+      <button class="primary" type="submit" id="login-btn">Se connecter</button>
+      <button class="link" type="button" id="switch-mode">Pas encore de compte ? Créer un compte</button>
     </form>
-    <div id="sent" hidden>
-      <p class="msg">Ouvrez l'e-mail « Your sign-in link » sur cet appareil et touchez <strong>Sign in</strong>. Vous serez connecté ici automatiquement.</p>
-      <button class="link" type="button" id="back">Changer d'adresse ou renvoyer</button>
-    </div>
     <p id="login-msg" class="msg"></p>
   </section>
 

@@ -1,5 +1,5 @@
 // Garde l'app utilisable hors ligne : fichiers de l'app en cache, données via Supabase.
-const CACHE = "quick-note-v4";
+const CACHE = "quick-note-v5";
 const SHELL = [
   "./", "index.html", "style.css", "app.js", "config.js", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png",

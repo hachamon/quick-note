@@ -21,21 +21,32 @@
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "implicit" },
   });
 
-  // ================= Connexion =================
-  let email = "";
-  $("#email-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    email = $("#email").value.trim();
-    setLoginMsg("Envoi…");
-    const redirect = location.origin + location.pathname.replace(/index\.html$/, "");
-    const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: redirect } });
-    if (error) return setLoginMsg(/rate|seconds/i.test(error.message) ? "Patientez une minute avant de redemander un lien." : "Envoi impossible : " + error.message, true);
-    $("#email-form").hidden = true;
-    $("#sent").hidden = false;
-    setLoginMsg("Lien envoyé à " + email + ". Vérifiez aussi les spams.");
+  // ================= Connexion (e-mail + mot de passe) =================
+  let signup = false;
+  $("#switch-mode").addEventListener("click", () => {
+    signup = !signup;
+    $("#login-title").textContent = signup ? "Créer un compte" : "Connexion";
+    $("#login-btn").textContent = signup ? "Créer mon compte" : "Se connecter";
+    $("#switch-mode").textContent = signup ? "Déjà un compte ? Se connecter" : "Pas encore de compte ? Créer un compte";
+    $("#password").autocomplete = signup ? "new-password" : "current-password";
+    setLoginMsg("");
   });
-  $("#back").addEventListener("click", () => {
-    $("#sent").hidden = true; $("#email-form").hidden = false; setLoginMsg("");
+  $("#login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = $("#email").value.trim(), password = $("#password").value;
+    setLoginMsg(signup ? "Création du compte…" : "Connexion…");
+    const { data, error } = signup
+      ? await sb.auth.signUp({ email, password })
+      : await sb.auth.signInWithPassword({ email, password });
+    if (error) {
+      if (/invalid login/i.test(error.message)) return setLoginMsg("E-mail ou mot de passe incorrect.", true);
+      if (/already registered/i.test(error.message)) return setLoginMsg("Ce compte existe déjà : connectez-vous.", true);
+      if (/not confirmed/i.test(error.message)) return setLoginMsg("Confirmez d'abord votre adresse via l'e-mail reçu.", true);
+      return setLoginMsg(error.message, true);
+    }
+    if (signup && !data.session) return setLoginMsg("Compte créé. Confirmez votre adresse via l'e-mail reçu, puis connectez-vous.");
+    $("#password").value = "";
+    setLoginMsg("");
   });
   $("#logout").addEventListener("click", async () => {
     await sb.auth.signOut();
@@ -266,29 +277,7 @@
     }
   }
 
-  // Retour de connexion vers l'APK : le lien de l'e-mail s'ouvre dans Chrome, qui se connecte,
-  // puis propose de transmettre la session à l'app via quicknote://login.
-  const cameFromEmail = /access_token=/.test(location.hash);
-  const isAndroidBrowser = /Android/i.test(navigator.userAgent) && !native;
-  if (native?.App) {
-    native.App.addListener("appUrlOpen", async ({ url }) => {
-      const h = new URLSearchParams(url.split("#")[1] || "");
-      if (h.get("access_token")) await sb.auth.setSession({ access_token: h.get("access_token"), refresh_token: h.get("refresh_token") });
-    });
-  }
-  let offered = false;
-  function offerOpenInApp(session) {
-    const link = "quicknote://login#access_token=" + encodeURIComponent(session.access_token) + "&refresh_token=" + encodeURIComponent(session.refresh_token);
-    const box = $("#to-app");
-    box.querySelector("a").href = link;
-    box.hidden = false;
-    location.href = link; // ouvre l'APK directement si elle est installée
-  }
-
-  sb.auth.onAuthStateChange((evt, session) => {
-    showApp(session);
-    if (cameFromEmail && isAndroidBrowser && session && !offered && (evt === "SIGNED_IN" || evt === "INITIAL_SESSION")) { offered = true; offerOpenInApp(session); }
-  });
+  sb.auth.onAuthStateChange((_evt, session) => showApp(session));
   sb.auth.getSession().then(({ data }) => showApp(data.session));
   window.addEventListener("online", flush);
   window.addEventListener("offline", () => setStatus());
